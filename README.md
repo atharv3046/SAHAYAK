@@ -404,6 +404,8 @@ SmartSathi strictly follows **RBI** and **NPCI** guidelines:
 
 ---
 
+
+
 ## 👨‍💻 Developers
 
 <table align="center">
