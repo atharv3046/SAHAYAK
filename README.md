@@ -29,14 +29,14 @@
 <td align="center" width="50%">
 
 ### 🏠 Home Page
-![Home Page](https://via.placeholder.com/480x280/EFF8DA/3D5A30?text=SmartSathi+Home)
+![Home Page](https://placehold.co/480x280/EFF8DA/3D5A30?text=SmartSathi+Home)
 *Multilingual hero with mascot and feature cards*
 
 </td>
 <td align="center" width="50%">
 
 ### 🤖 AI Chat (Sahayak)
-![Chat Interface](https://via.placeholder.com/480x280/FFFFFF/3D5A30?text=AI+Chat+Interface)
+![Chat Interface](https://placehold.co/480x280/FFFFFF/3D5A30?text=AI+Chat+Interface)
 *Step-by-step guidance in Hindi, Marathi, Tamil, Bengali & English*
 
 </td>
@@ -45,14 +45,14 @@
 <td align="center" width="50%">
 
 ### 🛡️ Scam Checker
-![Scam Checker](https://via.placeholder.com/480x280/FFF0F0/E05252?text=Scam+Checker)
+![Scam Checker](https://placehold.co/480x280/FFF0F0/E05252?text=Scam+Checker)
 *Paste any SMS and get an instant RBI-verified risk analysis*
 
 </td>
 <td align="center" width="50%">
 
 ### 📰 Live Scam News
-![News Feed](https://via.placeholder.com/480x280/FFF8ED/E07B2E?text=Scam+News+Feed)
+![News Feed](https://placehold.co/480x280/FFF8ED/E07B2E?text=Scam+News+Feed)
 *AI-generated real-time scam alerts by category*
 
 </td>
@@ -75,11 +75,11 @@ graph TB
     end
 
     subgraph SERVER ["⚙️ Express Server (Port 5000)"]
-        H[/api/chat]
-        I[/api/scam-check]
-        J[/api/screenshot-analyze]
-        K[/api/news]
-        L[/api/youtube]
+        H["/api/chat"]
+        I["/api/scam-check"]
+        J["/api/screenshot-analyze"]
+        K["/api/news"]
+        L["/api/youtube"]
     end
 
     subgraph AI ["🤖 OpenRouter AI"]
@@ -116,13 +116,13 @@ graph TB
 
 ```mermaid
 flowchart TD
-    START([🌿 User Opens SmartSathi]) --> LANG[Select Language\nहिंदी / मराठी / தமிழ் / বাংলা / English]
-    LANG --> HOME[🏠 Home Screen]
+    START(["🌿 User Opens SmartSathi"]) --> LANG["Select Language (Hindi/Marathi/Tamil/Bengali/English)"]
+    LANG --> HOME["🏠 Home Screen"]
 
-    HOME --> CHAT_BTN[💬 Chat with Sahayak]
-    HOME --> SCAM_BTN[🛡️ Check a Scam SMS]
-    HOME --> SS_BTN[📸 Analyze Screenshot]
-    HOME --> NEWS_BTN[📰 Scam News]
+    HOME --> CHAT_BTN["💬 Chat with Sahayak"]
+    HOME --> SCAM_BTN["🛡️ Check a Scam SMS"]
+    HOME --> SS_BTN["📸 Analyze Screenshot"]
+    HOME --> NEWS_BTN["📰 Scam News"]
 
     CHAT_BTN --> CHAT[AI Chat Interface]
     CHAT --> LEVEL{Confusion Level}
