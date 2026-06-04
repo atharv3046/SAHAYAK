@@ -24,40 +24,68 @@
 
 ## 📸 Screenshots
 
-<table>
+<div style="background: linear-gradient(135deg, #EFF8DA 0%, #F0F9E8 100%); border-radius: 16px; padding: 40px 20px;">
+
+<table width="100%" style="border-collapse: collapse;">
 <tr>
-<td align="center" width="50%">
+<td align="center" width="50%" style="padding: 20px;">
 
 ### 🏠 Home Page
-![Home Page](https://placehold.co/480x280/EFF8DA/3D5A30?text=SmartSathi+Home)
-*Multilingual hero with mascot and feature cards*
+<div style="background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 8px 24px rgba(61, 90, 48, 0.15); transform: translateY(0); transition: transform 0.3s ease;">
+
+![Home Page](./client/public/screenshots/home-page.png)
+
+</div>
+
+**Multilingual hero with mascot**  
+*Language selector • Feature cards • Call-to-action buttons*
 
 </td>
-<td align="center" width="50%">
+<td align="center" width="50%" style="padding: 20px;">
 
 ### 🤖 AI Chat (Sahayak)
-![Chat Interface](https://placehold.co/480x280/FFFFFF/3D5A30?text=AI+Chat+Interface)
-*Step-by-step guidance in Hindi, Marathi, Tamil, Bengali & English*
+<div style="background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 8px 24px rgba(61, 90, 48, 0.15); transform: translateY(0); transition: transform 0.3s ease;">
+
+![Chat Interface](./client/public/screenshots/chat-interface.png)
+
+</div>
+
+**Step-by-step guidance**  
+*5 languages • 3 confusion levels • Voice support*
 
 </td>
 </tr>
 <tr>
-<td align="center" width="50%">
+<td align="center" width="50%" style="padding: 20px;">
 
 ### 🛡️ Scam Checker
-![Scam Checker](https://placehold.co/480x280/FFF0F0/E05252?text=Scam+Checker)
-*Paste any SMS and get an instant RBI-verified risk analysis*
+<div style="background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 8px 24px rgba(224, 82, 82, 0.15); transform: translateY(0); transition: transform 0.3s ease;">
+
+![Scam Checker](./client/public/screenshots/scam-checker.png)
+
+</div>
+
+**Instant SMS & image analysis**  
+*Risk assessment • 8 RBI/NPCI rules • Visual warnings*
 
 </td>
-<td align="center" width="50%">
+<td align="center" width="50%" style="padding: 20px;">
 
 ### 📰 Live Scam News
-![News Feed](https://placehold.co/480x280/FFF8ED/E07B2E?text=Scam+News+Feed)
-*AI-generated real-time scam alerts by category*
+<div style="background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 8px 24px rgba(224, 123, 46, 0.15); transform: translateY(0); transition: transform 0.3s ease;">
+
+![News Feed](./client/public/screenshots/news-feed.png)
+
+</div>
+
+**Real-time scam alerts**  
+*4 categories • AI-generated • Severity indicators*
 
 </td>
 </tr>
 </table>
+
+</div>
 
 ---
 
