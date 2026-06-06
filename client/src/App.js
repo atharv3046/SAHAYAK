@@ -28,11 +28,21 @@ export default function App() {
         langs={LANGS}
       />
       <main className="page">
-        {page === 'home'       && <WelcomeScreen setPage={setPage} language={language} />}
-        {page === 'chat'       && <ChatWindow language={language} setLanguage={setLanguage} langs={LANGS} />}
-        {page === 'scam'       && <ScamChecker language={language} />}
-        {page === 'screenshot' && <ScreenshotAnalyzer language={language} setLanguage={setLanguage} langs={LANGS} />}
-        {page === 'news'       && <NewsPage language={language} />}
+        <div style={{ display: page === 'home' ? 'block' : 'none' }}>
+          <WelcomeScreen setPage={setPage} language={language} />
+        </div>
+        <div style={{ display: page === 'chat' ? 'block' : 'none' }}>
+          <ChatWindow language={language} setLanguage={setLanguage} langs={LANGS} />
+        </div>
+        <div style={{ display: page === 'scam' ? 'block' : 'none' }}>
+          <ScamChecker language={language} />
+        </div>
+        <div style={{ display: page === 'screenshot' ? 'block' : 'none' }}>
+          <ScreenshotAnalyzer language={language} setLanguage={setLanguage} langs={LANGS} />
+        </div>
+        <div style={{ display: page === 'news' ? 'block' : 'none' }}>
+          <NewsPage language={language} />
+        </div>
       </main>
     </div>
   );

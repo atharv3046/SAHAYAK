@@ -8,6 +8,8 @@ const SCREEN_T = {
     errLoad: 'विश्लेषण नहीं हो सका। कृपया पुनः प्रयास करें।',
     resDetect: '📱 पहचाना गया:', resSteps: '📋 चरण-दर-चरण मार्गदर्शन',
     audioTitle: '🎙️ ऑडियो स्क्रिप्ट', btnRead: '▶ सुनें', btnStop: '⏹ रोकें',
+    placeholderTitle: '📋 चरण-दर-चरण मार्गदर्शन',
+    placeholderSteps: ['उस स्क्रीन का स्क्रीनशॉट लें जिसे आप समझना चाहते हैं।', 'उपर ड्रॉप ज़ोन में डालें या चुनने के लिए क्लिक करें।', '“विश्लेषण करें” बटन दबाएं — AI आपको बताएगा।', 'परिणाम धैर्य से पढ़ें और समझें।'],
   },
   marathi: {
     title: '📸 व्हिज्युअल मार्गदर्शक', desc: 'स्क्रीनशॉट अपलोड करा — कुठे टॅप करायचे ते आम्ही सांगू.',
@@ -16,6 +18,8 @@ const SCREEN_T = {
     errLoad: 'विश्लेषण अयशस्वी. कृपया पुन्हा प्रयत्न करा.',
     resDetect: '📱 ओळखले:', resSteps: '📋 टप्प्याटप्प्याने मार्गदर्शन',
     audioTitle: '🎙️ ऑडिओ स्क्रिप्ट', btnRead: '▶ ऐका', btnStop: '⏹ थांबवा',
+    placeholderTitle: '📋 टप्प्याटप्याने मार्गदर्शन',
+    placeholderSteps: ['ज्या स्क्रीन समजायची आहे तिचा स्क्रीनशॉट घ्या.', 'वरील ड्रॉप झोनमध्ये टाका किंवा निवडण्यासाठी क्लिक करा.', '“विश्लेषण करा” बटन दाबा — AI तुम्हाला सांगेल.', 'निकाल धैर्याने वाचा आणि समजा.'],
   },
   english: {
     title: '📸 Visual Guidance Engine', desc: 'Upload a screenshot — we will highlight what to tap.',
@@ -24,6 +28,8 @@ const SCREEN_T = {
     errLoad: 'Analysis failed. Please try again.',
     resDetect: '📱 Detected:', resSteps: '📋 Step-by-step guidance',
     audioTitle: '🎙️ Audio Script', btnRead: '▶ Read Aloud', btnStop: '⏹ Stop',
+    placeholderTitle: '📋 Step-by-step guidance',
+    placeholderSteps: ["Take a screenshot of the screen you need help with.", 'Drop it in the zone above or click to choose.', 'Press “Analyze Screenshot” — the AI will guide you.', 'Read the steps carefully and follow along.'],
   },
   bengali: {
     title: '📸 ভিজ্যুয়াল গাইডেন্স ইঞ্জিন', desc: 'একটি স্ক্রিনশট আপলোড করুন — কোথায় ট্যাপ করতে হবে তা আমরা জানাব।',
@@ -32,6 +38,8 @@ const SCREEN_T = {
     errLoad: 'বিশ্লেষণ ব্যর্থ হয়েছে। আবার চেষ্টা করুন।',
     resDetect: '📱 শনাক্ত করা হয়েছে:', resSteps: '📋 ধাপে ধাপে নির্দেশনা',
     audioTitle: '🎙️ অডিও স্ক্রিপ্ট', btnRead: '▶ শুনুন', btnStop: '⏹ থামান',
+    placeholderTitle: '📋 ধাপে ধাপে নির্দেশনা',
+    placeholderSteps: ['যে স্ক্রিনে সাহায্য দরকার তার স্ক্রিনশট নিন।', 'উপরের জোনে দিন বা নির্বাচন করতে ক্লিক করুন।', '“বিশ্লেষণ করুন” বাটন চাপুন — AI আপনাকে গাইড করবে।', 'ফলাফল মনোযোগ দিয়ে পড়ুন ও বুঝুন।'],
   },
   tamil: {
     title: '📸 காட்சி வழிகாட்டுதல்', desc: 'ஸ்கிரீன்ஷாட்டைப் பதிவேற்றவும் — எங்கு தட்ட வேண்டும் என்பதை நாங்கள் காட்டுவோம்.',
@@ -40,6 +48,8 @@ const SCREEN_T = {
     errLoad: 'பகுப்பாய்வு தோல்வியடைந்தது. மீண்டும் முயற்சிக்கவும்.',
     resDetect: '📱 கண்டறியப்பட்டது:', resSteps: '📋 படிப்படியான வழிகாட்டுதல்',
     audioTitle: '🎙️ ஆடியோ ஸ்கிரிப்ட்', btnRead: '▶ வாசிக்க', btnStop: '⏹ நிறுத்து',
+    placeholderTitle: '📋 படிப்படியான வழிகாட்டுதல்',
+    placeholderSteps: ['உதவி தேவைப்படும் திரையின் ஸ்கிரீன்ஷாட் எடுக்கவும்.', 'மேலே உள்ள பகுதியில் போடவும் அல்லது தேர்ந்தெடுக்க கிளிக் செய்யவும்.', '“பகுப்பாய்வு செய்” கும்பிடு — AI உங்களுக்கு வழிகாட்டும்.', 'படிகளை கவனமாகப் படித்து பின்பற்றவும்.'],
   }
 };
 
@@ -216,15 +226,9 @@ export default function ScreenshotAnalyzer({ language, setLanguage, langs }) {
       {/* Default placeholder steps when no image */}
       {!result && !image && (
         <div className="steps-card" style={{ marginTop: 20, opacity: 0.7 }}>
-          <div className="steps-header"><span>📋</span> Step-by-step guidance</div>
+          <div className="steps-header"><span>📋</span> {t.placeholderTitle || t.resSteps}</div>
           <div className="steps-list">
-            {[
-              "Tap the green 'Send Money' button at the top.",
-              "Enter the receiver's UPI ID or scan the QR code.",
-              "Type the amount you want to send.",
-              "Tap 'Proceed' and enter your 4-digit UPI PIN.",
-              "Wait for the green ✅ — your payment is done!",
-            ].map((s, i) => (
+            {(t.placeholderSteps || []).map((s, i) => (
               <div key={i} className="step-item">
                 <div className="step-num">{i + 1}</div>
                 <div className="step-text">{s}</div>

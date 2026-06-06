@@ -43,13 +43,24 @@ app.use(cors({ origin: process.env.CLIENT_URL || 'http://localhost:3000', creden
 app.use(express.json({ limit: '10mb' }));
 app.use(express.text({ limit: '10mb' }));
 
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+const upload = multer({ 
+  storage: multer.memoryStorage(), 
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg'];
+    if (allowed.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type. Only JPG, PNG, and WebP are allowed.'), false);
+    }
+  }
+});
 const newsCache = new NodeCache({ stdTTL: 3600 }); // 1-hour TTL
 
 const DEFAULT_REQUEST_TIMEOUT = 60000; // 60s — free models can be slow
 
 // ─── Helper: Single OpenRouter request ────────────────────────────────────────
-async function fetchFromOpenRouter(model, messages) {
+async function fetchFromOpenRouter(model, messages, timeoutMs = DEFAULT_REQUEST_TIMEOUT) {
   const payload = {
     model,
     messages,
@@ -66,7 +77,7 @@ async function fetchFromOpenRouter(model, messages) {
       'X-Title': 'Sahayak',
     },
     body: JSON.stringify(payload),
-    signal: AbortSignal.timeout(DEFAULT_REQUEST_TIMEOUT),
+    signal: AbortSignal.timeout(timeoutMs),
   });
   if (!response.ok) {
     const errorData = await response.text();
@@ -99,16 +110,20 @@ async function callOpenRouter(systemPrompt, userMessage, imageBase64 = null, ima
     messages.push({ role: 'user', content: userMessage });
   }
 
-  // Try primary model first (up to 2 attempts), then fallbacks
-  const modelsToTry = [MODEL, ...FALLBACK_MODELS];
+  // If an image is provided, we MUST use a vision-capable model.
+  // 'openrouter/free' will automatically route to the best available free vision model.
+  const modelsToTry = (imageBase64 && imageMime)
+    ? ['openrouter/free']
+    : [MODEL, ...FALLBACK_MODELS];
   let lastError;
 
   for (const model of modelsToTry) {
     const maxAttempts = model === MODEL ? 2 : 1;
+    const timeoutToUse = (imageBase64 && imageMime) ? 120000 : DEFAULT_REQUEST_TIMEOUT;
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
         console.log(`[OpenRouter] Trying model: ${model} (attempt ${attempt})`);
-        const content = await fetchFromOpenRouter(model, messages);
+        const content = await fetchFromOpenRouter(model, messages, timeoutToUse);
         if (model !== MODEL) console.log(`[OpenRouter] ✅ Succeeded with fallback: ${model}`);
         return content;
       } catch (err) {
@@ -184,7 +199,23 @@ If your answer involves a how-to task, append this at the very end:
 Only when a tutorial video genuinely helps. Never for factual questions.`;
 };
 
-const SCAM_SYSTEM = `You are a cybersecurity expert specialising in Indian digital fraud detection.
+const SCAM_LANG_INSTRUCTIONS = {
+  hindi:   'Hindi (हिंदी)',
+  marathi: 'Marathi (मराठी)',
+  tamil:   'Tamil (தமிழ்)',
+  bengali: 'Bengali (বাংলা)',
+  english: 'English',
+};
+
+const getScamSystem = (language = 'hindi') => {
+  const lang = SCAM_LANG_INSTRUCTIONS[language] || SCAM_LANG_INSTRUCTIONS.hindi;
+  return `You are a cybersecurity expert specialising in Indian digital fraud detection.
+
+IMPORTANT LANGUAGE ENFORCEMENT:
+Return ALL generated fields in the selected language: ${lang}.
+Do not mix languages.
+Translate explanation, warning_signs, rules_violated, and advice into ${lang}.
+If the selected language is ${lang}, every single generated field must be in ${lang}.
 
 Analyse SMS / WhatsApp messages against these RBI/NPCI rules and common Indian scam patterns:
 1. Banks never ask for OTP, PIN, CVV or password via SMS / call / link.
@@ -201,17 +232,22 @@ Return ONLY a valid JSON object — no markdown, no text outside the JSON:
   "risk_level": "SAFE" | "SUSPICIOUS" | "DANGER",
   "confidence": <0–100>,
   "warning_signs": ["<specific warning found in message>"],
-  "advice": "<practical Hindi advice — what the user should do right now>",
+  "advice": "<practical advice in the specified language — what the user should do right now>",
   "rules_violated": ["<specific RBI/NPCI rule this message breaks>"],
-  "explanation": "<2–3 sentence Hindi explanation of why this verdict>"
+  "explanation": "<2–3 sentence explanation in the specified language of why this verdict>"
 }`;
+};
 
 const getScreenshotSystem = (language) => {
   const LANG = { hindi: 'Hindi', marathi: 'Marathi', tamil: 'Tamil', bengali: 'Bengali', english: 'English' };
   const lang = LANG[language] || 'Hindi';
   return `You are a visual guidance expert helping first-time smartphone users in rural India navigate mobile apps.
 
-Analyse the screenshot carefully and produce step-by-step guidance in ${lang}.
+IMPORTANT LANGUAGE ENFORCEMENT:
+Return ALL generated fields in the selected language: ${lang}.
+Do not mix languages.
+Translate app_detected, screen_description, steps (instruction and element), audio_script, and safety_notes into ${lang}.
+If the selected language is ${lang}, every single generated field must be in ${lang}.
 
 Return ONLY a valid JSON object — no markdown, no text outside the JSON:
 {
@@ -227,11 +263,19 @@ Return ONLY a valid JSON object — no markdown, no text outside the JSON:
 Rules:
 - Maximum 7 steps.
 - Each step must be a single short sentence.
-- Use colour or shape cues: "हरे बटन पर टैप करें", "tap the blue 'Pay' button".
+- Describe colour or shape cues (e.g. "tap the green button", "look for the blue 'Pay' text").
 - If you see any OTP/PIN input field, add a safety note.`;
 };
 
-const getNewsPrompt = (category) => {
+const NEWS_LANG_INSTRUCTIONS = {
+  hindi:   'Hindi (हिंदी)',
+  marathi: 'Marathi (मराठी)',
+  tamil:   'Tamil (தமிழ்)',
+  bengali: 'Bengali (বাংলা)',
+  english: 'English',
+};
+
+const getNewsPrompt = (category, language = 'hindi') => {
   const TOPICS = {
     upi:     'UPI payment fraud and digital payment scams in India',
     kyc:     'KYC update fraud and fake KYC scams in India',
@@ -239,18 +283,25 @@ const getNewsPrompt = (category) => {
     lottery: 'lottery fraud, prize scams, and fake winning messages in India',
   };
   const topic = TOPICS[category] || 'digital fraud and cybercrime in India';
+  const lang = NEWS_LANG_INSTRUCTIONS[language] || NEWS_LANG_INSTRUCTIONS.hindi;
   return `Generate 5 realistic and educational news summaries about ${topic} based on common real-world incidents in India.
+
+IMPORTANT LANGUAGE ENFORCEMENT:
+Return ALL generated fields in the selected language: ${lang}.
+Do not mix languages.
+Translate title, summary, and advice into ${lang}.
+If the selected language is ${lang}, every single generated field must be in ${lang}.
 
 Return ONLY a valid JSON array — no markdown, no text outside the JSON:
 [
   {
-    "title": "<headline>",
-    "summary": "<2–3 sentence summary in simple Hindi>",
+    "title": "<headline in the specified language>",
+    "summary": "<2–3 sentence summary in the specified language>",
     "category": "${(category || 'general').toUpperCase()}",
     "source": "<news outlet name>",
     "date": "<recent date>",
     "severity": "high" | "medium" | "low",
-    "advice": "<one-line Hindi advice for users>"
+    "advice": "<one-line advice for users in the specified language>"
   }
 ]`;
 };
@@ -258,10 +309,81 @@ Return ONLY a valid JSON array — no markdown, no text outside the JSON:
 // ─── Helper: parse JSON from response ──────────────────────────────────
 function parseJSON(text, fallback) {
   try {
-    const cleaned = text.trim().replace(/^```json\s*/i, '').replace(/```\s*$/, '').trim();
+    let cleaned = text.trim().replace(/^```json\s*/i, '').replace(/```\s*$/, '').trim();
+    cleaned = cleaned.replace(/,\s*([\]}])/g, '$1'); // Remove trailing commas
     return JSON.parse(cleaned);
   } catch {
     return fallback;
+  }
+}
+
+// ─── Helper: Post-process translation if model failed language enforcement ────
+// Returns true only if the TARGET script is clearly dominant across all non-ASCII
+// content. A single Hindi explanation field (Devanagari) must NOT count as
+// "already in Tamil" — it only counts if Devanagari is the dominant script.
+function detectScript(jsonStr, langLower) {
+  const devanagari = (jsonStr.match(/[\u0900-\u097F]/g) || []).length;
+  const bengali    = (jsonStr.match(/[\u0980-\u09FF]/g) || []).length;
+  const tamil      = (jsonStr.match(/[\u0B80-\u0BFF]/g) || []).length;
+  const total      = devanagari + bengali + tamil;
+
+  if (total < 15) return false; // too little non-ASCII to be sure
+
+  if (langLower === 'hindi' || langLower === 'marathi') {
+    return devanagari / total >= 0.80;
+  }
+  if (langLower === 'bengali') {
+    return bengali / total >= 0.80;
+  }
+  if (langLower === 'tamil') {
+    return tamil / total >= 0.80;
+  }
+  return false;
+}
+
+async function translateJSONIfNeeded(parsedObject, language) {
+  console.log(`[translateJSONIfNeeded] received language:`, language);
+  if (!language || language.toLowerCase() === 'english' || language.toLowerCase() === 'en') {
+    return parsedObject;
+  }
+
+  const jsonStr = JSON.stringify(parsedObject);
+  const langLower = language.toLowerCase();
+
+  // Stage 3 diagnostic: log what we are about to evaluate
+  console.log(`[STAGE-3 PRE-TRANSLATE] language=${language} jsonStr=`, jsonStr);
+
+  const isTranslated = detectScript(jsonStr, langLower);
+
+  if (isTranslated) {
+    console.log(`[TRANSLATION] Skipping — dominant script already matches ${language}.`);
+    console.log(`[STAGE-3 SKIPPED] returning parsedObject as-is`);
+    return parsedObject;
+  }
+
+  console.log(`[TRANSLATION] Translating output to ${language}...`);
+
+  // Explicit field list so the model does not skip array items
+  const prompt = `You are a strict JSON translator for Indian regional languages.
+Translate EVERY string value in this JSON into ${language}.
+This includes:
+- The "explanation" string
+- Every item inside the "warning_signs" array
+- Every item inside the "rules_violated" array
+- The "advice" string
+Do NOT translate the JSON keys themselves (risk_level, confidence, warning_signs, rules_violated, advice, explanation).
+Do NOT change "risk_level" values (SAFE / SUSPICIOUS / DANGER).
+Return ONLY the translated JSON object — no markdown, no extra text.`;
+
+  try {
+    const rawTranslated = await callOpenRouter(prompt, JSON.stringify(parsedObject));
+    console.log(`[TRANSLATION RAW] ${language}:`, rawTranslated);
+    const result = parseJSON(rawTranslated, parsedObject);
+    console.log(`[STAGE-3 POST-TRANSLATE]`, JSON.stringify(result));
+    return result;
+  } catch (e) {
+    console.error('[TRANSLATION ERROR]', e);
+    return parsedObject;
   }
 }
 
@@ -293,13 +415,17 @@ app.post('/api/chat', async (req, res) => {
     return res.json({ text, youtubeQuery });
   } catch (err) {
     console.error('[CHAT ERROR]', err);
-    let reply = 'माफ़ करें, अभी सेवा उपलब्ध नहीं है। कृपया थोड़ी देर बाद प्रयास करें।';
     
-    const msg = err?.message || '';
-    if (msg.includes('429') || msg.includes('Rate limit') || msg.includes('quota')) {
-      reply = 'सेवा अभी अनुपलब्ध है। कृपया कुछ समय बाद पुनः प्रयास करें।';
-    }
-
+    const CHAT_ERRORS = {
+      hindi: 'माफ़ करें, अभी सेवा उपलब्ध नहीं है। कृपया थोड़ी देर बाद प्रयास करें।',
+      marathi: 'क्षमस्व, सध्या सेवा अनुपलब्ध आहे. कृपया थोड्या वेळाने प्रयत्न करा.',
+      tamil: 'மன்னிக்கவும், சேவை தற்போது கிடைக்கவில்லை. சிறிது நேரம் கழித்து முயற்சிக்கவும்.',
+      bengali: 'দুঃখিত, পরিষেবাটি বর্তমানে অনুপলব্ধ। অনুগ্রহ করে কিছুক্ষণ পরে আবার চেষ্টা করুন.',
+      english: 'Sorry, the service is currently unavailable. Please try again later.',
+    };
+    
+    let reply = CHAT_ERRORS[language] || CHAT_ERRORS.hindi;
+    
     return res.json({
       text: reply,
       youtubeQuery: null,
@@ -309,8 +435,19 @@ app.post('/api/chat', async (req, res) => {
 
 // ── 2. SCAM CHECKER (text + optional image OCR) ───────────────────────────────
 app.post('/api/scam-check', upload.single('image'), async (req, res) => {
+  const lang = req.body.language || 'hindi';
+  console.log(`[/api/scam-check] initial lang:`, lang, 'req.body.language:', req.body.language);
+  const SCAM_FALLBACK = {
+    hindi: { w: 'विश्लेषण अधूरा रहा', a: 'सावधान रहें और अपने बैंक से सम्पर्क करें।', e: 'विश्लेषण पूर्ण नहीं हो सका।', ea: 'सेवा अनुपलब्ध — कृपया 1 मिनट बाद पुनः प्रयास करें।', ee: 'विश्लेषण में त्रुटि हुई।' },
+    marathi: { w: 'विश्लेषण अपूर्ण राहिले', a: 'सावधगिरी बाळगा आणि तुमच्या बँकेशी संपर्क साधा.', e: 'विश्लेषण पूर्ण होऊ शकले नाही.', ea: 'सेवा अनुपलब्ध — कृपया 1 मिनिटानंतर पुन्हा प्रयत्न करा.', ee: 'विश्लेषणात त्रुटी आली.' },
+    tamil: { w: 'பகுப்பாய்வு முழுமையடையவில்லை', a: 'கவனமாக இருங்கள் மற்றும் உங்கள் வங்கியைத் தொடர்பு கொள்ளுங்கள்.', e: 'பகுப்பாய்வு முழுமையடையவில்லை.', ea: 'சேவை கிடைக்கவில்லை — 1 நிமிடம் கழித்து மீண்டும் முயற்சிக்கவும்.', ee: 'பகுப்பாய்வில் பிழை ஏற்பட்டது.' },
+    bengali: { w: 'বিশ্লেষণ অসম্পূর্ণ', a: 'সতর্ক থাকুন এবং আপনার ব্যাঙ্কের সাথে যোগাযোগ করুন।', e: 'বিশ্লেষণ সম্পূর্ণ হয়নি।', ea: 'পরিষেবা অনুপলব্ধ — অনুগ্রহ করে ১ মিনিট পর আবার চেষ্টা করুন।', ee: 'বিশ্লেষণে ত্রুটি হয়েছে।' },
+    english: { w: 'Analysis incomplete', a: 'Be careful and contact your bank.', e: 'Could not complete the analysis.', ea: 'Service unavailable — please try again in 1 minute.', ee: 'Error in analysis.' }
+  };
+
   try {
-    const { message } = req.body;
+    const { message, language = 'hindi' } = req.body;
+    console.log(`[/api/scam-check] parsed language:`, language);
     const hasImage = !!req.file;
     const hasText  = !!(message && message.trim());
 
@@ -330,25 +467,39 @@ app.post('/api/scam-check', upload.single('image'), async (req, res) => {
     const b64 = hasImage ? req.file.buffer.toString('base64') : null;
     const mime = hasImage ? (req.file.mimetype || 'image/jpeg') : null;
 
-    const raw = await callOpenRouter(SCAM_SYSTEM, userMessage, b64, mime);
+    const scamSystem = getScamSystem(language);
+    // Stage 1: raw OpenRouter response
+    const raw = await callOpenRouter(scamSystem, userMessage, b64, mime);
+    console.log(`\n[STAGE-1 RAW OPENROUTER]:\n${raw}\n`);
 
-    const parsed = parseJSON(raw, {
+    const fb = SCAM_FALLBACK[language] || SCAM_FALLBACK.hindi;
+
+    // Stage 2: after parseJSON
+    let parsed = parseJSON(raw, {
       risk_level: 'SUSPICIOUS',
       confidence: 50,
-      warning_signs: ['विश्लेषण अधूरा रहा'],
-      advice: 'सावधान रहें और अपने बैंक से सम्पर्क करें।',
+      warning_signs: [fb.w],
+      advice: fb.a,
       rules_violated: [],
-      explanation: 'विश्लेषण पूर्ण नहीं हो सका।',
+      explanation: fb.e,
     });
+    console.log(`[STAGE-2 AFTER parseJSON]:`, JSON.stringify(parsed));
 
+    // Stage 3: after translateJSONIfNeeded (logged inside the function)
+    parsed = await translateJSONIfNeeded(parsed, language);
+
+    // Stage 4: final object sent to client
+    console.log(`[STAGE-4 FINAL res.json]:`, JSON.stringify(parsed));
     return res.json(parsed);
   } catch (err) {
     console.error('[SCAM]', err);
+    const fb = SCAM_FALLBACK[lang] || SCAM_FALLBACK.hindi;
+    console.log(`[/api/scam-check] error fallback for lang '${lang}':`, fb);
     return res.json({
       risk_level: 'SUSPICIOUS', confidence: 0,
       warning_signs: [], rules_violated: [],
-      advice: 'सेवा अनुपलब्ध — कृपया 1 मिनट बाद पुनः प्रयास करें।',
-      explanation: 'विश्लेषण में त्रुटि हुई।',
+      advice: fb.ea,
+      explanation: fb.ee,
     });
   }
 });
@@ -365,19 +516,51 @@ app.post('/api/screenshot-analyze', upload.single('image'), async (req, res) => 
     const systemPrompt = getScreenshotSystem(language);
     const userMessage = 'Please analyze this screenshot and provide guidance.';
     const raw = await callOpenRouter(systemPrompt, userMessage, b64, mime);
+    console.log(`\n[SCREENSHOT RAW RESPONSE]:\n${raw}\n`);
 
-    const parsed = parseJSON(raw, {
+    const SCREENSHOT_FALLBACK_MSG = {
+      hindi:   'स्क्रीनशॉट का विश्लेषण नहीं हो सका।',
+      marathi: 'स्क्रीनशॉटचे विश्लेषण होऊ शकले नाही.',
+      tamil:   'ஸ்கிரீன்ஷாட்டை பகுப்பாய்வு செய்ய முடியவில்லை.',
+      bengali: 'স্ক্রিনশট বিশ্লেষণ করা সম্ভব হয়নি।',
+      english: 'Could not analyze the screenshot.',
+    };
+    const fallbackMsg = SCREENSHOT_FALLBACK_MSG[language] || SCREENSHOT_FALLBACK_MSG.hindi;
+
+    let parsed = parseJSON(raw, {
       app_detected: 'Unknown',
-      screen_description: 'Screenshot received',
-      steps: [{ number: 1, instruction: 'स्क्रीनशॉट का विश्लेषण नहीं हो सका।', element: '' }],
-      audio_script: 'विश्लेषण में त्रुटि।',
+      screen_description: '',
+      steps: [{ number: 1, instruction: fallbackMsg, element: '' }],
+      audio_script: fallbackMsg,
       safety_notes: [],
     });
+
+    parsed = await translateJSONIfNeeded(parsed, language);
 
     return res.json(parsed);
   } catch (err) {
     console.error('[SCREENSHOT]', err);
-    return res.status(500).json({ error: 'AI service unavailable', steps: [], audio_script: '' });
+    return res.status(500).json({ error: err.message || 'AI service unavailable', steps: [], audio_script: '' });
+  }
+});
+
+// ── 3.5. TRANSLATE EXISTING SCAM RESULT (no re-analysis) ─────────────────────
+// Called by the client when the user switches language after an analysis.
+// Accepts the cached result object + target language; runs translateJSONIfNeeded
+// only. No image, no OpenRouter scam prompt — just a translation pass.
+app.post('/api/translate-scam', async (req, res) => {
+  try {
+    const { result, language = 'hindi' } = req.body;
+    if (!result || typeof result !== 'object') {
+      return res.status(400).json({ error: 'result object required' });
+    }
+    console.log(`[/api/translate-scam] language=${language}`);
+    const translated = await translateJSONIfNeeded(result, language);
+    return res.json(translated);
+  } catch (err) {
+    console.error('[TRANSLATE-SCAM]', err);
+    // On failure return the original so the UI does not break
+    return res.json(req.body.result);
   }
 });
 
@@ -385,11 +568,13 @@ app.post('/api/screenshot-analyze', upload.single('image'), async (req, res) => 
 app.get('/api/news', async (req, res) => {
   try {
     const category = (req.query.category || 'upi').toLowerCase();
-    const cacheKey = `news_${category}`;
+    const language = req.query.language || 'hindi';
+    // Cache is language-aware so Hindi and Marathi don't share the same cache
+    const cacheKey = `news_${category}_${language}`;
     const cached = newsCache.get(cacheKey);
     if (cached) return res.json({ articles: cached, cached: true });
 
-    const raw = await callOpenRouter(null, getNewsPrompt(category));
+    const raw = await callOpenRouter(null, getNewsPrompt(category, language));
     const articles = parseJSON(raw, []);
 
     if (articles.length) newsCache.set(cacheKey, articles);
@@ -452,6 +637,7 @@ app.get('/api/youtube', async (req, res) => {
 // Handle unhandled promise rejections
 process.on('unhandledRejection', (reason, promise) => {
   console.error('[UNHANDLED REJECTION]', reason);
+  process.exit(1);
 });
 
 // Handle uncaught exceptions

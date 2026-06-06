@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 
 const SAMPLES = [
   'आपका SBI खाता बंद होने वाला है! अभी KYC अपडेट करें: http://sbi-kyc-update.xyz/login पर क्लिक करें।',
@@ -6,10 +6,32 @@ const SAMPLES = [
   'आपका UPI ID: 9876543210@paytm से ₹500 की ट्रांसफर Request भेजी गई है। Approve करने के लिए PIN डालें।',
 ];
 
-const RISK_LABELS = {
-  SAFE:       { emoji: '✅', text: 'सुरक्षित', cls: 'risk-SAFE' },
-  SUSPICIOUS: { emoji: '⚠️', text: 'संदिग्ध',  cls: 'risk-SUSPICIOUS' },
-  DANGER:     { emoji: '🚨', text: 'खतरनाक',   cls: 'risk-DANGER' },
+const RISK_LABELS_T = {
+  hindi: {
+    SAFE:       { emoji: '✅', text: 'सुरक्षित',  cls: 'risk-SAFE' },
+    SUSPICIOUS: { emoji: '⚠️', text: 'संदिग्ध',   cls: 'risk-SUSPICIOUS' },
+    DANGER:     { emoji: '🚨', text: 'खतरनाक',    cls: 'risk-DANGER' },
+  },
+  marathi: {
+    SAFE:       { emoji: '✅', text: 'सुरक्षित',  cls: 'risk-SAFE' },
+    SUSPICIOUS: { emoji: '⚠️', text: 'संशयास्पद', cls: 'risk-SUSPICIOUS' },
+    DANGER:     { emoji: '🚨', text: 'धोकादायक',  cls: 'risk-DANGER' },
+  },
+  tamil: {
+    SAFE:       { emoji: '✅', text: 'பாதுகாப்பானது', cls: 'risk-SAFE' },
+    SUSPICIOUS: { emoji: '⚠️', text: 'சந்தேகமானது',  cls: 'risk-SUSPICIOUS' },
+    DANGER:     { emoji: '🚨', text: 'ஆபத்தானது',    cls: 'risk-DANGER' },
+  },
+  bengali: {
+    SAFE:       { emoji: '✅', text: 'নিরাপদ',     cls: 'risk-SAFE' },
+    SUSPICIOUS: { emoji: '⚠️', text: 'সন্দেহজনক', cls: 'risk-SUSPICIOUS' },
+    DANGER:     { emoji: '🚨', text: 'বিপজ্জনক',  cls: 'risk-DANGER' },
+  },
+  english: {
+    SAFE:       { emoji: '✅', text: 'Safe',       cls: 'risk-SAFE' },
+    SUSPICIOUS: { emoji: '⚠️', text: 'Suspicious', cls: 'risk-SUSPICIOUS' },
+    DANGER:     { emoji: '🚨', text: 'Danger',     cls: 'risk-DANGER' },
+  },
 };
 
 const SCAM_T = {
@@ -91,17 +113,36 @@ export default function ScamChecker({ language = 'hindi' }) {
   const [image, setImage]     = useState(null);   // { file, preview }
   const [loading, setLoading] = useState(false);
   const [result, setResult]   = useState(null);
+  const [rawResult, setRawResult] = useState(null); // cached first-analysis result
   const [error, setError]     = useState('');
   const [dragging, setDragging] = useState(false);
   const fileRef = useRef(null);
 
   const t = SCAM_T[language] || SCAM_T.hindi;
 
+  // ── On language change: translate cached result, no new OpenRouter analysis ──
+  useEffect(() => {
+    if (!rawResult) return; // nothing analysed yet
+    let cancelled = false;
+    setLoading(true);
+    fetch('/api/translate-scam', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ result: rawResult, language }),
+    })
+      .then(r => r.json())
+      .then(data => { if (!cancelled) setResult(data); })
+      .catch(() => { /* keep existing result on network error */ })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [language]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleImage = (file) => {
     if (!file || !file.type.startsWith('image/')) return;
     const preview = URL.createObjectURL(file);
     setImage({ file, preview });
     setResult(null);
+    setRawResult(null); // new image → discard cached result
     setError('');
   };
 
@@ -109,24 +150,26 @@ export default function ScamChecker({ language = 'hindi' }) {
     if (mode === 'text' && !text.trim()) return;
     if (mode === 'image' && !image) return;
 
-    setLoading(true); setResult(null); setError('');
+    setLoading(true); setResult(null); setRawResult(null); setError('');
     try {
       let res;
       if (mode === 'image') {
         const fd = new FormData();
         fd.append('image', image.file);
+        fd.append('language', language);
         if (text.trim()) fd.append('message', text.trim());
         res = await fetch('/api/scam-check', { method: 'POST', body: fd });
       } else {
         res = await fetch('/api/scam-check', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message: text }),
+          body: JSON.stringify({ message: text, language }),
         });
       }
       const data = await res.json();
       if (data.error && !data.risk_level) throw new Error(data.error);
       setResult(data);
+      setRawResult(data); // cache the original result for language-change re-use
     } catch (e) {
       setError(t.errLoad);
     } finally {
@@ -134,6 +177,7 @@ export default function ScamChecker({ language = 'hindi' }) {
     }
   };
 
+  const RISK_LABELS = RISK_LABELS_T[language] || RISK_LABELS_T.hindi;
   const riskInfo = result ? (RISK_LABELS[result.risk_level] || RISK_LABELS.SUSPICIOUS) : null;
 
   const canCheck = mode === 'text' ? text.trim().length > 0 : !!image;
@@ -149,7 +193,7 @@ export default function ScamChecker({ language = 'hindi' }) {
       <div className="scam-tabs">
         <button
           className={`scam-tab ${mode === 'text' ? 'active' : ''}`}
-          onClick={() => { setMode('text'); setResult(null); setError(''); }}
+          onClick={() => { setMode('text'); setResult(null); setRawResult(null); setError(''); }}
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
@@ -158,7 +202,7 @@ export default function ScamChecker({ language = 'hindi' }) {
         </button>
         <button
           className={`scam-tab ${mode === 'image' ? 'active' : ''}`}
-          onClick={() => { setMode('image'); setResult(null); setError(''); }}
+          onClick={() => { setMode('image'); setResult(null); setRawResult(null); setError(''); }}
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
@@ -215,7 +259,7 @@ export default function ScamChecker({ language = 'hindi' }) {
             ) : (
               <div className="scam-image-preview">
                 <img src={image.preview} alt="Upload preview" />
-                <button className="remove-image-btn" onClick={() => { setImage(null); setResult(null); }}>
+                <button className="remove-image-btn" onClick={() => { setImage(null); setResult(null); setRawResult(null); }}>
                   {t.remove}
                 </button>
               </div>

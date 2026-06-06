@@ -82,10 +82,10 @@ export default function NewsPage({ language = 'hindi' }) {
 
   const t = T[language] || T.hindi;
 
-  const fetchNews = useCallback(async (cat, forceRefresh = false) => {
+  const fetchNews = useCallback(async (cat, lang, forceRefresh = false) => {
     setLoading(true); setError(''); setArticles([]);
     try {
-      const url = `/api/news?category=${cat}${forceRefresh ? '&refresh=1' : ''}`;
+      const url = `/api/news?category=${cat}&language=${lang}${forceRefresh ? '&refresh=1' : ''}`;
       const res = await fetch(url);
       const data = await res.json();
       if (data.error && !data.articles?.length) throw new Error(data.error);
@@ -98,11 +98,11 @@ export default function NewsPage({ language = 'hindi' }) {
     }
   }, [t.errLoad]);
 
-  useEffect(() => { fetchNews(category); }, [category, fetchNews]);
+  useEffect(() => { fetchNews(category, language); }, [category, language, fetchNews]);
 
   const handleRefresh = () => {
     setSpinning(true);
-    fetchNews(category, true);
+    fetchNews(category, language, true);
   };
 
   return (

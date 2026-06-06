@@ -25,6 +25,7 @@ const T = {
     q1: 'मुझे नहीं पता था UPI क्या है, अब मैं खुद पैसे भेज सकता हूं', q1n: 'रामलाल', q1p: 'किसान, उत्तर प्रदेश',
     q2: 'WhatsApp पर आए लॉटरी मैसेज को SmartSathi ने पकड़ लिया — मेरे ₹5000 बचे', q2n: 'सुनीता देवी', q2p: 'गृहिणी, बिहार',
     q3: 'बहुत आसान है, मेरी माँ भी इस्तेमाल करती हैं — आवाज़ में सुनकर सीखती हैं', q3n: 'अजय कुमार', q3p: 'दुकानदार, राजस्थान',
+    openBtn: 'खोलें',
   },
   marathi: {
     eyebrow: '✨ स्मार्ट साथी · AI सोबती',
@@ -50,6 +51,7 @@ const T = {
     q1: 'मला UPI काय आहे हे माहीत नव्हते, आता मी स्वतः पैसे पाठवू शकतो', q1n: 'रामलाल', q1p: 'शेतकरी, उत्तर प्रदेश',
     q2: 'WhatsApp वर आलेला Lottery Message SmartSathi ने ओळखला — माझे ₹5000 वाचले', q2n: 'सुनीता देवी', q2p: 'गृहिणी, बिहार',
     q3: 'खूप सोपे आहे, माझी आई पण वापरते — आवाजात ऐकून शिकते', q3n: 'अजय कुमार', q3p: 'दुकानदार, राजस्थान',
+    openBtn: 'उघडा',
   },
   tamil: {
     eyebrow: '✨ ஸ்மார்ட் சாதி · AI தோழன்',
@@ -75,6 +77,7 @@ const T = {
     q1: 'UPI என்னவென்று தெரியவில்லை, இப்போது நானே பணம் அனுப்புகிறேன்', q1n: 'ராமலால்', q1p: 'விவசாயி, உத்தர பிரதேசம்',
     q2: 'WhatsApp Lottery செய்தியை SmartSathi கண்டுபிடித்தது — ₹5000 மிச்சமானது', q2n: 'சுனிதா தேவி', q2p: 'இல்லத்தரசி, பிஹார்',
     q3: 'மிகவும் எளிதானது, என் அம்மாவும் பயன்படுத்துகிறார்கள்', q3n: 'அஜய் குமார்', q3p: 'கடைக்காரர், ராஜஸ்தான்',
+    openBtn: 'திற',
   },
   bengali: {
     eyebrow: '✨ স্মার্ট সাথী · AI সঙ্গী',
@@ -100,6 +103,7 @@ const T = {
     q1: 'UPI কী তা জানতাম না, এখন নিজেই টাকা পাঠাতে পারি', q1n: 'রামলাল', q1p: 'কৃষক, উত্তর প্রদেশ',
     q2: 'WhatsApp Lottery বার্তা SmartSathi ধরে ফেলল — ₹5000 বাঁচল', q2n: 'সুনিতা দেবী', q2p: 'গৃহিণী, বিহার',
     q3: 'অনেক সহজ, আমার মা-ও ব্যবহার করেন — শুনে শিখছেন', q3n: 'অজয় কুমার', q3p: 'দোকানদার, রাজস্থান',
+    openBtn: 'খুলুন',
   },
   english: {
     eyebrow: '✨ SmartSathi · AI Companion',
@@ -125,6 +129,7 @@ const T = {
     q1: "I didn't know what UPI was — now I send money myself every day", q1n: 'Ramlal', q1p: 'Farmer, Uttar Pradesh',
     q2: 'SmartSathi caught a WhatsApp Lottery scam — saved me ₹5,000', q2n: 'Sunita Devi', q2p: 'Homemaker, Bihar',
     q3: 'Very easy to use. Even my mother uses it — she learns by listening', q3n: 'Ajay Kumar', q3p: 'Shopkeeper, Rajasthan',
+    openBtn: 'Open',
   },
 };
 
@@ -167,7 +172,6 @@ export default function WelcomeScreen({ setPage, language = 'hindi' }) {
     };
   }, [language]);
 
-  const openBtn = language === 'english' ? 'Open' : language === 'marathi' ? 'उघडा' : language === 'tamil' ? 'திற' : language === 'bengali' ? 'খুলুন' : 'खोलें';
 
   return (
     <>
@@ -269,7 +273,7 @@ export default function WelcomeScreen({ setPage, language = 'hindi' }) {
                 <h3>{f.title}</h3>
                 <p>{f.desc}</p>
                 <button className="feature-open">
-                  {language === 'english' ? 'Open' : language === 'marathi' ? 'उघडा' : language === 'tamil' ? 'திற' : language === 'bengali' ? 'খুলুন' : 'खोलें'} →
+                  {t.openBtn} →
                 </button>
               </div>
             ))}

@@ -64,7 +64,11 @@ const CHAT_T = {
     placeholder: 'अपना सवाल यहाँ लिखें...',
     micTitleOn: 'सुन रहा है... (रोकने के लिए क्लिक करें)',
     micTitleOff: 'बोलकर पूछें',
+    micUnsupported: 'आपका ब्राउज़र वॉयस इनपुट को सपोर्ट नहीं करता।',
     speakOn: 'रोकें', speakOff: 'सुनें',
+    sendTitle: 'भेजें',
+    notUnderstand: 'मुझे समझ नहीं आया',
+    simplify: (q) => `मुझे "${q}" को और सरल तरीके से समझाओ। कृपया एक भारतीय जीवन का उदाहरण दो।`,
     err: 'माफ़ करें, अभी सेवा उपलब्ध नहीं है। कृपया थोड़ी देर बाद प्रयास करें।',
     suggestions: ['UPI कैसे इस्तेमाल करें?', 'KYC क्या है?']
   },
@@ -73,7 +77,11 @@ const CHAT_T = {
     placeholder: 'तुमचा प्रश्न इथे लिहा...',
     micTitleOn: 'ऐकत आहे... (थांबवण्यासाठी क्लिक करा)',
     micTitleOff: 'बोलून विचारा',
+    micUnsupported: 'तुमचा ब्राउझर व्हॉइस इनपुट सपोर्ट करत नाही.',
     speakOn: 'थांबवा', speakOff: 'ऐका',
+    sendTitle: 'पाठवा',
+    notUnderstand: 'मला समजले नाही',
+    simplify: (q) => `मला "${q}" अधिक सोप्या भाषेत समजावून सांगा. कृपया एक भारतीय जीवनाचे उदाहरण द्या.`,
     err: 'क्षमस्व, सध्या सेवा अनुपलब्ध आहे. कृपया थोड्या वेळाने प्रयत्न करा.',
     suggestions: ['UPI कसे वापरावे?', 'KYC म्हणजे काय?']
   },
@@ -82,7 +90,11 @@ const CHAT_T = {
     placeholder: 'உங்கள் கேள்வியை இங்கே எழுதவும்...',
     micTitleOn: 'கேட்கிறது... (நிறுத்த கிளிக் செய்யவும்)',
     micTitleOff: 'பேசி கேட்கவும்',
+    micUnsupported: 'உங்கள் உலாவி குரல் உள்ளீட்டை ஆதரிக்கவில்லை.',
     speakOn: 'நிறுத்து', speakOff: 'கேட்க',
+    sendTitle: 'அனுப்பு',
+    notUnderstand: 'எனக்கு புரியவில்லை',
+    simplify: (q) => `"${q}" என்பதை மேலும் எளிமையாக விளக்கவும். நிஜ வாழ்க்கை இந்திய உதாரணத்தைக் கூறவும்.`,
     err: 'மன்னிக்கவும், சேவை தற்போது கிடைக்கவில்லை. சிறிது நேரம் கழித்து முயற்சிக்கவும்.',
     suggestions: ['UPI ஐ எவ்வாறு பயன்படுத்துவது?', 'KYC என்றால் என்ன?']
   },
@@ -91,7 +103,11 @@ const CHAT_T = {
     placeholder: 'আপনার প্রশ্ন এখানে লিখুন...',
     micTitleOn: 'শুনছি... (থামাতে ক্লিক করুন)',
     micTitleOff: 'বলে জিজ্ঞাসা করুন',
+    micUnsupported: 'আপনার ব্রাউজার ভয়েস ইনপুট সমর্থন করে না।',
     speakOn: 'থামান', speakOff: 'শুনুন',
+    sendTitle: 'পাঠান',
+    notUnderstand: 'আমি বুঝতে পারিনি',
+    simplify: (q) => `"${q}" আরও সহজভাবে বুঝিয়ে দিন। অনুগ্রহ করে একটি ভারতীয় জীবনের উদাহরণ দিন।`,
     err: 'দুঃখিত, পরিষেবাটি বর্তমানে অনুপলব্ধ। অনুগ্রহ করে কিছুক্ষণ পরে আবার চেষ্টা করুন.',
     suggestions: ['UPI কীভাবে ব্যবহার করবেন?', 'KYC কী?']
   },
@@ -100,7 +116,11 @@ const CHAT_T = {
     placeholder: 'Type your question here...',
     micTitleOn: 'Listening... (Click to stop)',
     micTitleOff: 'Ask by voice',
+    micUnsupported: 'Your browser does not support voice input.',
     speakOn: 'Stop', speakOff: 'Listen',
+    sendTitle: 'Send',
+    notUnderstand: "I didn't understand",
+    simplify: (q) => `Explain "${q}" more simply with a real-life Indian analogy.`,
     err: 'Sorry, the service is currently unavailable. Please try again later.',
     suggestions: ['How to use UPI?', 'What is KYC?']
   }
@@ -108,7 +128,7 @@ const CHAT_T = {
 
 const INITIAL_MSG = {
   role: 'assistant',
-  content: 'नमस्ते! मैं साहायक हूँ। क्या आप UPI से पैसे भेजना सीखना चाहते हैं?',
+  content: '',
   ytCard: null,
 };
 
@@ -214,14 +234,7 @@ export default function ChatWindow({ language, setLanguage, langs }) {
     const lastUserMsg = [...messages].reverse().find(m => m.role === 'user');
     if (!lastUserMsg) return;
     nextConfusion();
-    
-    let simplifyMsg = `मुझे "${lastUserMsg.content}" को और सरल तरीके से समझाओ। कृपया एक भारतीय जीवन का उदाहरण दो।`;
-    if (language === 'english') simplifyMsg = `Explain "${lastUserMsg.content}" more simply with a real-life Indian analogy.`;
-    else if (language === 'marathi') simplifyMsg = `मला "${lastUserMsg.content}" अधिक सोप्या भाषेत समजावून सांगा. कृपया एक भारतीय जीवनाचे उदाहरण द्या.`;
-    else if (language === 'bengali') simplifyMsg = `मुझे "${lastUserMsg.content}" আরও সহজভাবে বুঝিয়ে দিন। অনুগ্রহ করে একটি ভারতীয় জীবনের উদাহরণ দিন।`;
-    else if (language === 'tamil') simplifyMsg = `"${lastUserMsg.content}" என்பதை மேலும் எளிமையாக விளக்கவும். நிஜ வாழ்க்கை இந்திய உதாரணத்தைக் கூறவும்.`;
-    
-    sendMessage(simplifyMsg);
+    sendMessage(t.simplify(lastUserMsg.content));
   };
 
   const handleKey = (e) => {
@@ -231,7 +244,7 @@ export default function ChatWindow({ language, setLanguage, langs }) {
   // ── Speech-to-Text ──────────────────────────────────────────────────────────
   const toggleListening = () => {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SR) { alert('Browser not supported.'); return; }
+    if (!SR) { alert(t.micUnsupported); return; }
 
     if (isListening) {
       recognitionRef.current?.stop();
@@ -349,7 +362,7 @@ export default function ChatWindow({ language, setLanguage, langs }) {
               {msg.role === 'assistant' && msg.ytQuery && !ytCards[i] && (
                 <a
                   className="yt-card"
-                  href={`https://www.youtube.com/results?search_query=${encodeURIComponent(msg.ytQuery.query)}`}
+                  href={`https://www.youtube.com/results?search_query=${encodeURIComponent(msg.ytQuery?.query || msg.ytQuery)}`}
                   target="_blank"
                   rel="noreferrer"
                 >
@@ -416,10 +429,7 @@ export default function ChatWindow({ language, setLanguage, langs }) {
               <path d="M4 17v2" />
               <path d="M5 18H3" />
             </svg>
-            {language === 'english' ? "I didn't understand" : 
-             language === 'marathi' ? 'मला समजले नाही' : 
-             language === 'bengali' ? 'আমি বুঝতে পারিনি' : 
-             language === 'tamil' ? 'எனக்கு புரியவில்லை' : 'मुझे समझ नहीं आया'}
+            {t.notUnderstand}
           </button>
         </div>
       )}
@@ -451,7 +461,7 @@ export default function ChatWindow({ language, setLanguage, langs }) {
             className="chat-send-icon-btn"
             onClick={() => sendMessage()}
             disabled={!input.trim() || loading}
-            title="भेजें"
+            title={t.sendTitle}
           >
             {loading ? <div className="spinner" /> : (
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ marginLeft: '-2px' }}>
